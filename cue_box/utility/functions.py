@@ -11,7 +11,7 @@ from delta.tables import DeltaTable
 
 # COMMAND ----------
 
-# MAGIC %run /Users/sagar.omar@electrolux.com/CB/utility/schemas
+# MAGIC %run /Repos/potturi.tulasiram@diggibyte.com/cue-box/cue_box/utility/schemas
 
 # COMMAND ----------
 
@@ -34,10 +34,10 @@ def get_custom_schema(table_name):
     - Variable or value associated with the input string
     """
     table_schema_mapping = {
-        "user": user_schema,
-        "driver": driver_schema,
+        "users": user_schema,
+        "drivers": driver_schema,
         "menu": menu_schema,
-        "resturant": resturant_schema,
+        "restaurants": restaurants_schema,
         "address": address_schema,
         "ratings": rating_schema,
         "orders": orders_schema,
@@ -64,14 +64,14 @@ def get_merge_column(table_name):
     - Variable or value associated with the input string
     """
     table_merge_columns_mapping = {
-        "user": user_column_list,
-        "driver": driver_column_list,
-        "menu": menu_column_list,
-        "resturant": resturant_column_list,
-        "address": address_column_list,
-        "ratings": rating_column_list,
-        "orders": orders_column_list,
-        "payments": payments_column_list
+        "users": user_merge_columns,
+        "drivers": driver_merge_columns,
+        "menu": menu_merge_columns,
+        "restaurants": restaurants_merge_columns,
+        "address": address_merge_columns,
+        "ratings": ratings_merge_columns,
+        "orders": orders_merge_columns,
+        "payments": payments_merge_columns
     }
 
     # Return the merge columns associated with the input table
@@ -169,6 +169,38 @@ def typecast_columns(df, column_datatypes):
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC
+# MAGIC #Convert Epoch to Timestamp
+
+# COMMAND ----------
+
+def convert_epoch_columns_to_datetime(data_frame, epoch_columns):
+    """
+    Converts epoch timestamp columns in a PySpark DataFrame to human-readable date-time format.
+
+    Parameters:
+    - data_frame: PySpark DataFrame
+    - epoch_columns: List of column names with epoch timestamp values
+
+    Returns:
+    - DataFrame with specified epoch timestamp columns converted to date-time format
+    """
+    for column in epoch_columns:
+        # Clean the column values by keeping only numerical digits
+        cleaned_column = regexp_replace(col(column), "\\.", "")
+
+        # Use withColumn to apply the conversion to each specified column
+        data_frame = data_frame.withColumn(
+            column,
+            when(cleaned_column != "",  # Ensure the cleaned column is not empty
+                 from_unixtime(cleaned_column / 10).cast("timestamp"))
+        )
+
+    return data_frame
+
+# COMMAND ----------
+
 # MAGIC %md ##READ FUNCTIONS
 
 # COMMAND ----------
@@ -194,12 +226,12 @@ def read_data(options):
         raise ValueError(f"Unsupported format: {file_format}. Supported formats: {', '.join(supported_formats)}")
 
     # Extract options
-    path = options.get('path')\
-    custom_schema = options.get('schema')\
+    path = options.get('path')
+    custom_schema = options.get('schema')
     additional_options = options.get('additional_options')
 
     # Read data based on the specified format
-    return spark.read.format(file_format).schema(custom_schema).options(additional_options).load(path)
+    return spark.read.format(file_format).schema(custom_schema).options(**additional_options).load(path)
 
 # COMMAND ----------
 
@@ -261,6 +293,7 @@ def merge_into_delta_table(source_df, database_name, table_name,merge_columns, u
 # COMMAND ----------
 
 def overwrite_delta_table(source_df, database_name, table_name, table_path, add_new_columns):
+  spark.sql(f"CREATE DATABASE IF NOT EXISTS {database_name}")
   if add_new_columns:
     spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
   source_df.write.mode("overwrite").option("overwriteSchema", "true").option("path", table_path).saveAsTable(f"{database_name}.{table_name}")

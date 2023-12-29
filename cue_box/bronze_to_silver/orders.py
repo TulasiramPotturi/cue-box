@@ -27,11 +27,7 @@
 
 # COMMAND ----------
 
-# MAGIC %run /Users/sagar.omar@electrolux.com/CB/utility/functions
-
-# COMMAND ----------
-
-# MAGIC %run /Users/sagar.omar@electrolux.com/CB/utility/schemas
+# MAGIC %run /Repos/potturi.tulasiram@diggibyte.com/cue-box/cue_box/utility/functions
 
 # COMMAND ----------
 
@@ -63,10 +59,10 @@ if load_type == "incremental":
   sub_directory = schedule_date
   add_new_columns = False
 else:
-  sub_directory = "historical"
+  sub_directory = schedule_date
 
-bronze_layer_path = data_lake_base_uri + "/{}/{}/{}/{}".format("bronze", database_name, target_table_name,sub_directory)
-silver_layer_path = data_lake_base_uri + "/{}/{}/{}/".format("silver", database_name, target_table_name)
+bronze_layer_path = data_lake_base_uri + "/{}/{}/{}/{}".format("data/bronze", database_name, target_table_name,sub_directory)
+silver_layer_path = data_lake_base_uri + "/{}/{}/{}/".format("data/silver", database_name, target_table_name)
 
 # COMMAND ----------
 
@@ -91,7 +87,7 @@ OPTIONS_DICT = {
 
 # COMMAND ----------
 
-bronze_layer_df = read_data(OPTIONS_DICT)
+bronze_layer_df = read_data(OPTIONS_DICT).drop('order_total')
 
 # COMMAND ----------
 
@@ -99,8 +95,16 @@ bronze_layer_df = read_data(OPTIONS_DICT)
 
 # COMMAND ----------
 
+epoch_to_timestamp = convert_epoch_columns_to_datetime(bronze_layer_df,['order_placed_date'])
+
+# COMMAND ----------
+
+order_punctuality = epoch_to_timestamp.withColumn("order_punctuality", when(col("estimated_delivery_time") <= col("delivered_time"), lit("order delayed")).otherwise(lit("order on-time")))
+
+# COMMAND ----------
+
 # DBTITLE 1,add audit date
-final_df = bronze_layer_df.withColumn("load_date", schedule_date)
+final_df = order_punctuality.withColumn("load_date", lit(schedule_date))
 
 # COMMAND ----------
 
@@ -111,4 +115,4 @@ final_df = bronze_layer_df.withColumn("load_date", schedule_date)
 if load_type == "incremental":
   merge_into_delta_table(final_df, datbase_name, target_table_name, MERGE_COLUMNS)
 else:
-  overwrite_delta_table(final_df, database_name, target_table_name, add_new_columns)
+  overwrite_delta_table(final_df, database_name, target_table_name, silver_layer_path,add_new_columns)

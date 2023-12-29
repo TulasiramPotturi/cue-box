@@ -5,7 +5,7 @@
 
 # DBTITLE 1,Users
 user_schema = StructType([
-    StructField("user_id", IntegerType(), nullable=False),
+    StructField("user_id", LongType(), nullable=False),
     StructField("name", StringType(), nullable=False),
     StructField("email", StringType(), nullable=False),
     StructField("password", StringType(), nullable=False),
@@ -16,8 +16,8 @@ user_schema = StructType([
 
 # DBTITLE 1,Address
 address_schema = StructType([
-    StructField("address_id", IntegerType(), nullable=False),
-    StructField("user_id", IntegerType(), nullable=False),
+    StructField("address_id", LongType(), nullable=False),
+    StructField("user_id", LongType(), nullable=False),
     StructField("state", StringType(), nullable=False),
     StructField("city", StringType(), nullable=False),
     StructField("address", StringType(), nullable=False),
@@ -26,8 +26,8 @@ address_schema = StructType([
 # COMMAND ----------
 
 # DBTITLE 1,Resturarnt
-resturant_schema = StructType([
-    StructField("resturant_id", IntegerType(), nullable=False),
+restaurants_schema = StructType([
+    StructField("resturant_id", LongType(), nullable=False),
     StructField("name", StringType(), nullable=False),
     StructField("address", StringType(), nullable=False),
     StructField("phone", StringType(), nullable=False)
@@ -37,8 +37,8 @@ resturant_schema = StructType([
 
 # DBTITLE 1,Menu
 menu_schema = StructType([
-    StructField("menu_id", IntegerType(), nullable=False),
-    StructField("resturant_id", IntegerType(), nullable=False),
+    StructField("menu_id", LongType(), nullable=False),
+    StructField("resturant_id", LongType(), nullable=False),
     StructField("item_name", StringType(), nullable=False),
     StructField("price", StringType(), nullable=False)
 ])
@@ -47,21 +47,22 @@ menu_schema = StructType([
 
 # DBTITLE 1,Drivers
 driver_schema = StructType([
-    StructField("driver_id", IntegerType(), nullable=False),
+    StructField("driver_id", LongType(), nullable=False),
     StructField("name", StringType(), nullable=False),
-    StructField("phone", StringType(), nullable=False),
+    StructField("email", StringType(), nullable=False),
     StructField("state", StringType(), nullable=False),
     StructField("city", StringType(), nullable=False),
-    StructField("email", StringType(), nullable=False)
+    StructField("phone", StringType(), nullable=False)
 ])
 
 # COMMAND ----------
 
 # DBTITLE 1,Ratings
 rating_schema = StructType([
-    StructField("rating_id", IntegerType(), nullable=False),
-    StructField("user_id", IntegerType(), nullable=False),
-    StructField("resturant_id", IntegerType(), nullable=False),
+    StructField("rating_id", LongType(), nullable=False),
+    StructField("order_id", LongType(), nullable=False),
+    StructField("user_id", LongType(), nullable=False),
+    StructField("resturant_id", LongType(), nullable=False),
     StructField("raitings", StringType(), nullable=False)
 ])
 
@@ -69,20 +70,23 @@ rating_schema = StructType([
 
 # DBTITLE 1,Orders
 orders_schema = StructType([
-    StructField("order_id", IntegerType(), nullable=False),
-    StructField("user_id", IntegerType(), nullable=False),
-    StructField("resturant_id", IntegerType(), nullable=False),
-    StructField("order_total", StringType(), nullable=False),
+    StructField("order_id", LongType(), nullable=False),
+    StructField("order_placed_date", StringType(), nullable=False),
+    StructField("user_id", LongType(), nullable=False),
+    StructField("resturant_id", LongType(), nullable=False),
+    StructField("payment_id", LongType(), nullable=False),
     StructField("delivery_status", StringType(), nullable=False),
-    StructField("driver_id", IntegerType(), nullable=False),
+    StructField("driver_id", LongType(), nullable=False),
+    StructField("estimated_delivery_time", IntegerType(), nullable=False),
+    StructField("delivered_time", IntegerType(), nullable=False)
 ])
 
 # COMMAND ----------
 
 # DBTITLE 1,Payments
 payments_schema = StructType([
-    StructField("payment_id", IntegerType(), nullable=False),
-    StructField("order_id", IntegerType(), nullable=False),
+    StructField("payment_id", LongType(), nullable=False),
+    StructField("payment_date", StringType(), nullable=False),
     StructField("payment_method", StringType(), nullable=False),
     StructField("amount", StringType(), nullable=False),
     StructField("status", StringType(), nullable=False)
@@ -102,7 +106,7 @@ address_merge_columns = ["address_id"]
 
 # COMMAND ----------
 
-resturarnt_merge_columns = ["resturarnt_id"]
+restaurants_merge_columns = ["restaurant_id"]
 
 # COMMAND ----------
 

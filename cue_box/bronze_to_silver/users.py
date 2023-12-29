@@ -27,11 +27,7 @@
 
 # COMMAND ----------
 
-# MAGIC %run /Users/sagar.omar@electrolux.com/CB/utility/functions
-
-# COMMAND ----------
-
-# MAGIC %run /Users/sagar.omar@electrolux.com/CB/utility/schemas
+# MAGIC %run /Repos/potturi.tulasiram@diggibyte.com/cue-box/cue_box/utility/functions
 
 # COMMAND ----------
 
@@ -63,10 +59,10 @@ if load_type == "incremental":
   sub_directory = schedule_date
   add_new_columns = False
 else:
-  sub_directory = "historical"
+  sub_directory = schedule_date
 
-bronze_layer_path = data_lake_base_uri + "/{}/{}/{}/{}".format("bronze", database_name, target_table_name,sub_directory)
-silver_layer_path = data_lake_base_uri + "/{}/{}/{}/".format("silver", database_name, target_table_name)
+bronze_layer_path = data_lake_base_uri + "/{}/{}/{}/{}".format("data/bronze", database_name, target_table_name,sub_directory)
+silver_layer_path = data_lake_base_uri + "/{}/{}/{}/".format("data/silver", database_name, target_table_name)
 
 # COMMAND ----------
 
@@ -81,6 +77,7 @@ OPTIONS_DICT = {
       "additional_options" : {
          "header": "true",
          "delimeter": ",",
+         "inferSchema":"true",
          "multiline": "true"
       }
 }
@@ -105,8 +102,8 @@ hash_emails = bronze_layer_df.withColumn("email", md5("email"))
 # COMMAND ----------
 
 # DBTITLE 1,fix phone numbers
-replacement_dict = {"phone" : ('.', '-')}
-fix_phone_numbers = hash_emails.withcolumn("phone", replace_characters(hash_emails, replacement_dict))
+replacement_dict = {"phone" : ('\.', '-')}
+fix_phone_numbers = replace_characters(hash_emails, replacement_dict)
 
 # COMMAND ----------
 
@@ -116,7 +113,7 @@ remove_name = last_name.drop("name")
 
 # COMMAND ----------
 
-final_df = remove_name.withColumn("load_date", schedule_date)
+final_df = remove_name.withColumn("load_date", lit(schedule_date))
 
 # COMMAND ----------
 
@@ -125,6 +122,6 @@ final_df = remove_name.withColumn("load_date", schedule_date)
 # COMMAND ----------
 
 if load_type == "incremental":
-  merge_into_delta_table(final_df, datbase_name, target_table_name, MERGE_COLUMNS)
+  merge_into_delta_table(final_df, database_name, target_table_name, MERGE_COLUMNS)
 else:
-  overwrite_delta_table(final_df, database_name, target_table_name, add_new_columns)
+  overwrite_delta_table(final_df, database_name, target_table_name, silver_layer_path,add_new_columns)
