@@ -297,3 +297,7 @@ def overwrite_delta_table(source_df, database_name, table_name, table_path, add_
   if add_new_columns:
     spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
   source_df.write.mode("overwrite").option("overwriteSchema", "true").option("path", table_path).saveAsTable(f"{database_name}.{table_name}")
+
+# COMMAND ----------
+
+
