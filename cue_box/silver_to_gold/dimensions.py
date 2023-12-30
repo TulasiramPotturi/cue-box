@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC #  Fact Orders
+# MAGIC #  Dimension Tables
 # MAGIC
 # MAGIC ## Overview
 # MAGIC
@@ -42,48 +42,17 @@ load_type = dbutils.widgets.get("load_type")
 
 # COMMAND ----------
 
-table_name = "fact_" + target_table_name
-
-# COMMAND ----------
+table_name = "dim_" + target_table_name
 
 gold_layer_path = data_lake_base_uri + "/{}/{}/{}/".format("data/gold", database_name, table_name)
 
 # COMMAND ----------
 
-payment_column_list = ["payment_id", "amount", "status"]
-payment_rename_dict = {"amount" : "order_total", "status" : "payment_status"}
-
-address_column_list = ["user_id", "state", "city"]
-address_rename_dict = {"state" : "user_state", "city" : "user_city"}
-
-order_rename_dict = {"delivery_status": "order_status"}
-
-# COMMAND ----------
-
-orders_data   = rename_columns(get_table_data("cue_box", "orders"), order_rename_dict)
-
-payments_data = rename_columns(get_table_data("cue_box", "fact_payments").select(*payment_column_list), payment_rename_dict)
-
-address_data = rename_columns(get_table_data("cue_box", "dim_address").select(*address_column_list), address_rename_dict)
-
-# COMMAND ----------
-
-# DBTITLE 1,Get transaction amount from - fact_payments
-get_transaction_amount = orders_data.join(payments_data, ["payment_id"], "left")
-
-# COMMAND ----------
-
-# DBTITLE 1,Get location details from - dim_address
-get_location = get_transaction_amount.join(address_data, ["user_id"], "left")
-
-# COMMAND ----------
-
-# DBTITLE 1,Check order status against - payment_status
-fix_order_status = get_location.withColumn("order_status", when(col("payment_status") == "Declined", lit("Declined")).otherwise(col("order_status")))
+silver_layer_df = get_table_data(database_name, target_table_name).withColumnRenamed("load_date", "at_load_date")
 
 # COMMAND ----------
 
 if load_type == "incremental":
-    merge_into_delta_table(fix_order_status, database_name, table_name,gold_layer_path)
+    merge_into_delta_table(silver_layer_df, database_name, table_name,gold_layer_path)
 else:
-    overwrite_delta_table(fix_order_status, database_name, table_name,gold_layer_path, add_new_columns)
+    overwrite_delta_table(silver_layer_df, database_name, table_name,gold_layer_path, add_new_columns)
