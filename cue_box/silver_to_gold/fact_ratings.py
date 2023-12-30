@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC #  Fact Orders
+# MAGIC #  Fact Ratings
 # MAGIC
 # MAGIC ## Overview
 # MAGIC
@@ -50,40 +50,24 @@ gold_layer_path = data_lake_base_uri + "/{}/{}/{}/".format("data/gold", database
 
 # COMMAND ----------
 
-payment_column_list = ["payment_id", "amount", "status"]
-payment_rename_dict = {"amount" : "order_total", "status" : "payment_status"}
-
-address_column_list = ["user_id", "state", "city"]
-address_rename_dict = {"state" : "user_state", "city" : "user_city"}
-
-order_rename_dict = {"delivery_status": "order_status"}
+silver_layer_df = get_table_data(database_name, target_table_name)
 
 # COMMAND ----------
 
-orders_data   = rename_columns(get_table_data("cue_box", "orders"), order_rename_dict)
-
-payments_data = rename_columns(get_table_data("cue_box", "fact_payments").select(*payment_column_list), payment_rename_dict)
-
-address_data = rename_columns(get_table_data("cue_box", "dim_address").select(*address_column_list), address_rename_dict)
+order_column_list = ["order_id", "order_placed_date"]
+ratings_rename_dict = {"order_placed_date": "ratings_date", "load_date": "at_load_date"}
 
 # COMMAND ----------
 
-# DBTITLE 1,Get transaction amount from - fact_payments
-get_transaction_amount = orders_data.join(payments_data, ["payment_id"], "left")
+get_order_data = get_table_data("cue_box", "fact_orders").select(*order_column_list).dropDuplicates()
 
-# COMMAND ----------
+get_ratings_date = silver_layer_df.join(get_order_data, ["order_id"], "left")
 
-# DBTITLE 1,Get location details from - dim_address
-get_location = get_transaction_amount.join(address_data, ["user_id"], "left")
-
-# COMMAND ----------
-
-# DBTITLE 1,Check order status against - payment_status
-fix_order_status = get_location.withColumn("order_status", when(col("payment_status") == "Declined", lit("Declined")).otherwise(col("order_status")))
+rename_ratings_column = rename_columns(get_ratings_date, ratings_rename_dict)
 
 # COMMAND ----------
 
 if load_type == "incremental":
-    merge_into_delta_table(fix_order_status, database_name, table_name,gold_layer_path)
+    merge_into_delta_table(rename_ratings_column, database_name, table_name,gold_layer_path)
 else:
-    overwrite_delta_table(fix_order_status, database_name, table_name,gold_layer_path, add_new_columns)
+    overwrite_delta_table(rename_ratings_column, database_name, table_name,gold_layer_path, add_new_columns)

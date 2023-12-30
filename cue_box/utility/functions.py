@@ -169,6 +169,17 @@ def typecast_columns(df, column_datatypes):
 
 # COMMAND ----------
 
+# MAGIC %md ### Get Table Data
+
+# COMMAND ----------
+
+def get_table_data(database_name, table_name, filter_condition = None):
+    if filter_condition is None:
+        table_data_df = spark.sql("SELECT * FROM {}.{}".format(database_name, table_name))
+    return table_data_df
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC
 # MAGIC #Convert Epoch to Timestamp
@@ -244,7 +255,7 @@ def read_data(options):
 # COMMAND ----------
 
 
-def merge_into_delta_table(source_df, database_name, table_name,merge_columns, update_columns=None):
+def merge_into_delta_table(source_df, database_name, table_name, add_new_column = False, merge_columns = None, update_columns=None):
     """
     Merges data from a source DataFrame into a Delta table based on the database and table names.
 
@@ -260,31 +271,34 @@ def merge_into_delta_table(source_df, database_name, table_name,merge_columns, u
     Returns:
     - None
     """
-    not_null_check = " & ".join(f"col('{col}').isNotNull()" for col in merge_columns)
-    
-    source_df = source_df.dropDuplicates().filter(eval(not_null_check))
-
-    spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
-    
     # Construct Delta table path based on database and table names
     delta_table_path = f"{database_name}.{table_name}"
 
     # Read the Delta table using delta.forPath
     delta_table = DeltaTable.forPath(delta_table_path)
+        
+    if merge_columns is None:
+        overwrite_delta_table(source_df, database_name, delta_table, add_new_column)
+    else:
+        not_null_check = " & ".join(f"col('{col}').isNotNull()" for col in merge_columns)
+    
+        source_df = source_df.dropDuplicates().filter(eval(not_null_check))
 
-    # Construct merge condition based on merge_columns
-    merge_condition = " AND ".join([f"target.{col} = source.{col}" for col in merge_columns])
+        spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
 
-    update_columns = {source_df.columns} if update_columns else {update_columns}
-    # Determine update setExprs based on update_columns
-    update_set_exprs = {col: f"source.{col}" for col in update_columns}
+        # Construct merge condition based on merge_columns
+        merge_condition = " AND ".join([f"target.{col} = source.{col}" for col in merge_columns])
 
-    delta_table.alias("target").merge(
-        source_df.alias("source"),
-        merge_condition
-    ).whenMatchedUpdate(setExprs=update_set_exprs)\
-     .whenNotMatchedInsertAll()\
-     .execute()
+        update_columns = {source_df.columns} if update_columns else {update_columns}
+        # Determine update setExprs based on update_columns
+        update_set_exprs = {col: f"source.{col}" for col in update_columns}
+
+        delta_table.alias("target").merge(
+            source_df.alias("source"),
+            merge_condition
+        ).whenMatchedUpdate(setExprs=update_set_exprs)\
+        .whenNotMatchedInsertAll()\
+        .execute()
 
 # COMMAND ----------
 
@@ -297,7 +311,3 @@ def overwrite_delta_table(source_df, database_name, table_name, table_path, add_
   if add_new_columns:
     spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
   source_df.write.mode("overwrite").option("overwriteSchema", "true").option("path", table_path).saveAsTable(f"{database_name}.{table_name}")
-
-# COMMAND ----------
-
-
