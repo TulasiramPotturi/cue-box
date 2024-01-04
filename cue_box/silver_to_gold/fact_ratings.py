@@ -22,10 +22,12 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Common Imports and Functions
 # MAGIC %run /Repos/potturi.tulasiram@diggibyte.com/cue-box/cue_box/utility/functions
 
 # COMMAND ----------
 
+# DBTITLE 1,Paramters
 dbutils.widgets.text("schedule_date", "", "schedule_date")
 dbutils.widgets.text("data_lake_base_uri", "", "data_lake_base_uri")
 dbutils.widgets.text("database_name", "", "database_name")
@@ -42,11 +44,21 @@ load_type = dbutils.widgets.get("load_type")
 
 # COMMAND ----------
 
+# DBTITLE 1,Constants
 table_name = "fact_" + target_table_name
+gold_layer_path = data_lake_base_uri + "/{}/{}/{}/".format("data/gold", database_name, table_name)
 
 # COMMAND ----------
 
-gold_layer_path = data_lake_base_uri + "/{}/{}/{}/".format("data/gold", database_name, table_name)
+# DBTITLE 1,Constant Lists and Dicts
+order_column_list = ["order_id", "order_placed_date"]
+ratings_rename_dict = {"order_placed_date": "ratings_date", "load_date": "at_load_date"}
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC #Extract
 
 # COMMAND ----------
 
@@ -54,11 +66,12 @@ silver_layer_df = get_table_data(database_name, target_table_name)
 
 # COMMAND ----------
 
-order_column_list = ["order_id", "order_placed_date"]
-ratings_rename_dict = {"order_placed_date": "ratings_date", "load_date": "at_load_date"}
+# MAGIC %md
+# MAGIC #Transform
 
 # COMMAND ----------
 
+# DBTITLE 1,Get rating/order placed date from fact_orders
 get_order_data = get_table_data("cue_box", "fact_orders").select(*order_column_list).dropDuplicates()
 
 get_ratings_date = silver_layer_df.join(get_order_data, ["order_id"], "left")
@@ -67,6 +80,13 @@ rename_ratings_column = rename_columns(get_ratings_date, ratings_rename_dict)
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC
+# MAGIC #Load
+
+# COMMAND ----------
+
+# DBTITLE 1,Load Gold Table
 if load_type == "incremental":
     merge_into_delta_table(rename_ratings_column, database_name, table_name,gold_layer_path)
 else:
