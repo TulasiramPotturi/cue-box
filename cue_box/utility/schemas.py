@@ -5,11 +5,11 @@
 
 # DBTITLE 1,Users
 user_schema = StructType([
-    StructField("user_id", LongType(), nullable=False),
-    StructField("name", StringType(), nullable=False),
-    StructField("email", StringType(), nullable=False),
-    StructField("password", StringType(), nullable=False),
-    StructField("phone", StringType(), nullable=False),
+    StructField("user_id", LongType(), nullable=True),
+    StructField("name", StringType(), nullable=True),
+    StructField("email", StringType(), nullable=True),
+    StructField("password", StringType(), nullable=True),
+    StructField("phone", StringType(), nullable=True),
 ])
 
 # COMMAND ----------

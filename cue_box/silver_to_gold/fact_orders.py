@@ -22,10 +22,12 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Common Imports
 # MAGIC %run /Repos/potturi.tulasiram@diggibyte.com/cue-box/cue_box/utility/functions
 
 # COMMAND ----------
 
+# DBTITLE 1,Parameters
 dbutils.widgets.text("schedule_date", "", "schedule_date")
 dbutils.widgets.text("data_lake_base_uri", "", "data_lake_base_uri")
 dbutils.widgets.text("database_name", "", "database_name")
@@ -42,14 +44,13 @@ load_type = dbutils.widgets.get("load_type")
 
 # COMMAND ----------
 
+# DBTITLE 1,Constants
 table_name = "fact_" + target_table_name
-
-# COMMAND ----------
-
 gold_layer_path = data_lake_base_uri + "/{}/{}/{}/".format("data/gold", database_name, table_name)
 
 # COMMAND ----------
 
+# DBTITLE 1,Constant Common Lists
 payment_column_list = ["payment_id", "amount", "status"]
 payment_rename_dict = {"amount" : "order_total", "status" : "payment_status"}
 
@@ -60,6 +61,13 @@ order_rename_dict = {"delivery_status": "order_status"}
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC
+# MAGIC #Extract & Transform
+
+# COMMAND ----------
+
+# DBTITLE 1,Get User state & City from dim_users
 orders_data   = rename_columns(get_table_data("cue_box", "orders"), order_rename_dict)
 
 payments_data = rename_columns(get_table_data("cue_box", "fact_payments").select(*payment_column_list), payment_rename_dict)
@@ -83,6 +91,12 @@ fix_order_status = get_location.withColumn("order_status", when(col("payment_sta
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC #Load
+
+# COMMAND ----------
+
+# DBTITLE 1,Load Gold Table
 if load_type == "incremental":
     merge_into_delta_table(fix_order_status, database_name, table_name,gold_layer_path)
 else:
